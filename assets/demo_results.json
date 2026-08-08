@@ -1,0 +1,11 @@
+{
+  "clean": {
+    "const_vel_ade": 9.436895709313833e-17,
+    "kalman_ade": 0.00017507340678472449
+  },
+  "noisy": {
+    "const_vel_ade": 0.3302528678842895,
+    "kalman_ade": 0.22659900543610306
+  },
+  "fig1_seed_search": "representative seed where Kalman FDE < const-vel FDE by >0.15m"
+}
