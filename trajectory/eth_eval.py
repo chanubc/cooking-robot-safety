@@ -43,6 +43,11 @@ def load_trajs(path: Path):
     return windows
 
 
+def zero_vel(obs):
+    """정지 기준선: 사람이 마지막 관측 위치에 그대로 있다고 가정."""
+    return np.repeat(obs[-1][None, :], PRED, axis=0)
+
+
 def const_vel(obs):
     v = (obs[-1] - obs[0]) / ((OBS - 1) * DT)
     return np.array([obs[-1] + v * DT * (k + 1) for k in range(PRED)])
@@ -153,7 +158,7 @@ def main():
 
     def report(title, train, test):
         print(f"\n=== {title} — ADE / FDE (m) ===", flush=True)
-        for name, fn in [("const-velocity", const_vel), ("kalman", kalman)]:
+        for name, fn in [("zero-velocity", zero_vel), ("const-velocity", const_vel), ("kalman", kalman)]:
             a, f = eval_classical(fn, test)
             print(f"  {name:16s}  ADE={a:.3f}  FDE={f:.3f}", flush=True)
         la, lf = run_lstm(train, test)

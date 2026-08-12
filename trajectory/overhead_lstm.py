@@ -83,6 +83,11 @@ def windows(polys):
             X.append(arr[i:i+OBS+PRED])
     return X
 
+def zero_vel(obs):
+    """정지 기준선: 마지막 관측 위치 유지."""
+    return np.repeat(obs[-1][None, :], PRED, axis=0)
+
+
 def const_vel(obs):
     v=(obs[-1]-obs[0])/(OBS-1); return np.array([obs[-1]+v*(k+1) for k in range(PRED)])
 def kalman(obs):
@@ -133,28 +138,41 @@ def run_lstm(train_w,test_w):
     A=np.array(A); return A[:,0].mean(),A[:,1].mean()
 
 def main():
-    clips=load_clip_frames()
-    polys=build(clips)
-    allw=[]; per_clip_w={c:windows(p) for c,p in polys.items()}
-    for c,w in per_clip_w.items(): allw+=w
-    ntr=sum(len(p) for p in polys.values())
-    print(f"clips={len(polys)}  tracks(usable)={ntr}  windows={len(allw)}",flush=True)
+    clips = load_clip_frames()
+    polys = build(clips)
+    per_clip = {c: p for c, p in polys.items()}
+    all_tracks = [(c, arr) for c, ps in per_clip.items() for arr in ps]
+    allw = [w for _, arr in all_tracks for w in windows([arr])]
+    net = [np.linalg.norm(w[-1] - w[OBS - 1]) * IMG for w in allw]
+    print(f"clips={len(per_clip)}  tracks={len(all_tracks)}  windows={len(allw)}", flush=True)
+    print(f"8프레임 순변위: 평균 {np.mean(net):.1f}px  중앙값 {np.median(net):.1f}px  "
+          f"(3px 미만 {np.mean(np.array(net) < 3) * 100:.0f}%)", flush=True)
 
-    # 동일분포 80/20
-    rng=np.random.default_rng(0); idx=rng.permutation(len(allw)); cut=int(len(allw)*0.8)
-    tr=[allw[i] for i in idx[:cut]]; te=[allw[i] for i in idx[cut:]]
-    print("\n=== in-distribution (80/20) ADE/FDE px ===",flush=True)
-    for nm,fn in [("const-velocity",const_vel),("kalman",kalman)]:
-        a,f=eval_cls(fn,te); print(f"  {nm:16s} ADE={a:.1f} FDE={f:.1f}",flush=True)
-    a,f=run_lstm(tr,te); print(f"  {'lstm':16s} ADE={a:.1f} FDE={f:.1f}",flush=True)
+    def report(title, tr, te):
+        print(f"\n=== {title} — ADE/FDE px ===", flush=True)
+        for nm, fn in [("zero-velocity", zero_vel), ("const-velocity", const_vel), ("kalman", kalman)]:
+            a, f = eval_cls(fn, te)
+            print(f"  {nm:16s} ADE={a:.1f} FDE={f:.1f}", flush=True)
+        if tr:
+            a, f = run_lstm(tr, te)
+            print(f"  {'lstm':16s} ADE={a:.1f} FDE={f:.1f}", flush=True)
 
-    # 교차 클립: 절반 클립 학습 -> 나머지 평가
-    cl=sorted(per_clip_w); half=cl[:len(cl)//2]
-    trw=[w for c in half for w in per_clip_w[c]]; tew=[w for c in cl[len(cl)//2:] for w in per_clip_w[c]]
-    print(f"\n=== cross-clip (train {len(half)} clips / test {len(cl)-len(half)}) ADE/FDE px ===",flush=True)
-    for nm,fn in [("const-velocity",const_vel),("kalman",kalman)]:
-        a,f=eval_cls(fn,tew); print(f"  {nm:16s} ADE={a:.1f} FDE={f:.1f}",flush=True)
-    a,f=run_lstm(trw,tew); print(f"  {'lstm':16s} ADE={a:.1f} FDE={f:.1f}",flush=True)
-    print("DONE",flush=True)
+    # 트랙 단위 분할 — 같은 트랙의 겹치는 창이 학습/평가에 섞이지 않게
+    rng = np.random.default_rng(0)
+    idx = rng.permutation(len(all_tracks))
+    cut = int(len(all_tracks) * 0.8)
+    tr = [w for i in idx[:cut] for w in windows([all_tracks[i][1]])]
+    te = [w for i in idx[cut:] for w in windows([all_tracks[i][1]])]
+    report(f"track-level split (train {len(tr)} / test {len(te)} windows)", tr, te)
 
-if __name__=="__main__": main()
+    # 클립 단위 분할
+    cl = sorted(per_clip)
+    half = cl[:len(cl) // 2]
+    trw = [w for c in half for w in windows(per_clip[c])]
+    tew = [w for c in cl[len(cl) // 2:] for w in windows(per_clip[c])]
+    report(f"cross-clip (train {len(half)} clips / test {len(cl) - len(half)})", trw, tew)
+    print("DONE", flush=True)
+
+
+if __name__ == "__main__":
+    main()
