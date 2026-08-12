@@ -80,25 +80,24 @@ fig,axes=plt.subplots(1,2,figsize=(14,6))
 # --- BEFORE: 예측 시점 ---
 ax=axes[0]; ax.imshow(im_now)
 ax.add_patch(plt.Rectangle(((obs[-1,0]-bw/2)*W,(obs[-1,1]-bh/2)*H),bw*W,bh*H,fill=False,ec="#3b82f6",lw=3))
-ax.plot(obs[:,0]*W,obs[:,1]*H,'o-',color="#3b82f6",lw=3,ms=6,label="지금까지 걸어온 길 (8프레임)")
+ax.plot(obs[:,0]*W,obs[:,1]*H,'o-',color="#3b82f6",lw=3,ms=6,label="관찰한 경로")
 ax.annotate("",xy=(pr[-1,0]*W,pr[-1,1]*H),xytext=(obs[-1,0]*W,obs[-1,1]*H),
             arrowprops=dict(arrowstyle="-|>",color="#e45756",lw=3,ls="--"))
-ax.plot(pr[-1,0]*W,pr[-1,1]*H,'*',color="#e45756",ms=26,label="예측: 8프레임 뒤 여기 있을 것")
-ax.set_title(f"BEFORE — 예측 시점 (frame {f_now})\n왼쪽으로 프레임당 {abs(v[0]):.0f}px 이동 중",fontsize=12)
+ax.plot(pr[-1,0]*W,pr[-1,1]*H,'*',color="#e45756",ms=26,label="예측 위치")
+ax.set_title(f"예측 시점 · frame {f_now}",fontsize=13)
 ax.legend(loc="lower left",fontsize=9.5)
 # --- AFTER: 8프레임 뒤 ---
 ax=axes[1]; ax.imshow(im_aft)
-ax.plot(pr[-1,0]*W,pr[-1,1]*H,'*',color="#e45756",ms=26,label="예측했던 위치")
+ax.plot(pr[-1,0]*W,pr[-1,1]*H,'*',color="#e45756",ms=26,label="예측 위치")
 ax.add_patch(plt.Rectangle(((gt[-1,0]-bw/2)*W,(gt[-1,1]-bh/2)*H),bw*W,bh*H,fill=False,ec="k",lw=3))
-ax.plot(gt[-1,0]*W,gt[-1,1]*H,'X',color="k",ms=15,label="실제로 온 위치")
+ax.plot(gt[-1,0]*W,gt[-1,1]*H,'X',color="k",ms=15,label="실제 위치")
 ax.plot([pr[-1,0]*W,gt[-1,0]*W],[pr[-1,1]*H,gt[-1,1]*H],'-',color="#7a1c1f",lw=2)
 ax.annotate(f"오차 {err:.0f}px",xy=((pr[-1,0]+gt[-1,0])/2*W,(pr[-1,1]+gt[-1,1])/2*H),
             xytext=(10,-55),textcoords="offset points",fontsize=12,color="#7a1c1f",weight="bold",
             arrowprops=dict(arrowstyle="->",color="#7a1c1f"))
-ax.set_title(f"AFTER — 8프레임 뒤 실제 (frame {f_after})\n예측대로 왼쪽으로 이동했다",fontsize=12)
+ax.set_title(f"8프레임 뒤 · frame {f_after}",fontsize=13)
 ax.legend(loc="lower left",fontsize=9.5)
 for ax in axes:
     ax.set_xlim(X0,X1); ax.set_ylim(Y1,Y0); ax.axis("off")
-plt.suptitle(f"이동 전 / 이동 후 — 왼쪽으로 걷던 사람의 다음 위치를 미리 맞힘 ({move*640:.0f}px 이동, 오차 {err:.0f}px)",fontsize=13)
-plt.tight_layout(); plt.savefig(OUT/"scenario.png",dpi=125); plt.close()
+plt.tight_layout(); plt.savefig(OUT/"scenario.png",dpi=125,bbox_inches="tight",pad_inches=0.25); plt.close()
 print("saved scenario.png")
